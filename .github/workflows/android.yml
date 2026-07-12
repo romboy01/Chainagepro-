@@ -11,6 +11,9 @@ jobs:
     name: Build and Package APKs
     runs-on: ubuntu-latest
 
+    env:
+      GRADLE_OPTS: "-Djava.awt.headless=true"
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -24,11 +27,6 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-version: '9.3.1'
-
-      - name: Regenerate Gradle Wrapper
-        run: gradle wrapper --gradle-version 9.3.1
 
       - name: Grant Execute Permission to Gradlew
         run: chmod +x gradlew
