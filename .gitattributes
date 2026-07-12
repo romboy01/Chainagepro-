@@ -1,0 +1,4 @@
+# Ensure jar files are treated as binary files
+*.jar binary
+gradlew text eol=lf
+gradlew.bat text eol=crlf
