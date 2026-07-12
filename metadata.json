@@ -1,0 +1,6 @@
+{
+  "name": "Chainage Navigator Pro",
+  "description": "A comprehensive native Android application for modern, real-time highway and road-work chainage operations, weighbridge check-ins, fleet GPS navigation, incharge approvals, and group coordination.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

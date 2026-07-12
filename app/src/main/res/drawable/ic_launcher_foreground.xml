@@ -1,0 +1,52 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Shadow Gradient -->
+    <path
+        android:fillColor="#15000000"
+        android:pathData="M24,78 L84,78 L64,30 L44,30 Z" />
+
+    <!-- Road Base perspective -->
+    <path
+        android:fillColor="#FFBC00"
+        android:pathData="M18,84 L90,84 L62,32 L46,32 Z" />
+
+    <!-- Inner dark road asphalt -->
+    <path
+        android:fillColor="#1E232B"
+        android:pathData="M22,81 L86,81 L60,35 L48,35 Z" />
+
+    <!-- Dotted center divider lane -->
+    <path
+        android:fillColor="#FFBC00"
+        android:pathData="M53,78 L55,78 L55,68 L53,68 Z" />
+    <path
+        android:fillColor="#FFBC00"
+        android:pathData="M53,63 L55,63 L55,55 L53,55 Z" />
+    <path
+        android:fillColor="#FFBC00"
+        android:pathData="M53,50 L55,50 L55,44 L53,44 Z" />
+    <path
+        android:fillColor="#FFBC00"
+        android:pathData="M53,41 L55,41 L55,37 L53,37 Z" />
+
+    <!-- Large Pinpoint Marker at the end of the road -->
+    <!-- Base pin drop circle -->
+    <path
+        android:fillColor="#4CAF50"
+        android:pathData="M54,34 C58.4,34 62,30.4 62,26 C62,21.6 58.4,18 54,18 C49.6,18 46,21.6 46,26 C46,30.4 49.6,34 54,34 Z" />
+        
+    <!-- Pin shadow arrow pointing down -->
+    <path
+        android:fillColor="#4CAF50"
+        android:pathData="M54,38 L58,29 L50,29 Z" />
+
+    <!-- Core highlight in marker -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,29 C55.7,29 57,27.7 57,26 C57,24.3 55.7,23 54,23 C52.3,23 51,24.3 51,26 C51,27.7 52.3,29 54,29 Z" />
+
+</vector>

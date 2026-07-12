@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chainage Navigator Live Map</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <style>
+        html, body, #map {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background-color: #121212;
+        }
+        .custom-popup .leaflet-popup-content-wrapper {
+            background: #1e1e1e;
+            color: #ffffff;
+            font-family: 'Roboto', sans-serif;
+            border-radius: 8px;
+            border: 1px solid #ffbc00;
+        }
+        .custom-popup .leaflet-popup-tip {
+            background: #1e1e1e;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <script>
+        var map = L.map('map', {
+            zoomControl: false,
+            attributionControl: false
+        }).setView([23.0225, 72.5714], 13);
+
+        // Dark-themed tiles for premium styled industrial map
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            maxZoom: 20
+        }).addTo(map);
+
+        // Custom icon markers
+        var plantIcon = L.circleMarker([23.0225, 72.5714], {
+            color: '#388e3c',
+            fillColor: '#81c784',
+            fillOpacity: 0.8,
+            radius: 9
+        }).addTo(map).bindPopup("<b>Crusher and Asphalt Plant Base</b><br>Ch: 0+000 Point Alpha");
+
+        var chainageIcon1 = L.circleMarker([23.0338, 72.5850], {
+            color: '#0288d1',
+            fillColor: '#4fc3f7',
+            fillOpacity: 0.8,
+            radius: 8
+        }).addTo(map).bindPopup("<b>Drop-Off Section Alpha</b><br>Active GSB Segment (Ch:12+400 to 14+850)");
+
+        var chainageIcon2 = L.circleMarker([23.0512, 72.5930], {
+            color: '#ef6c00',
+            fillColor: '#ffb74d',
+            fillOpacity: 0.8,
+            radius: 8
+        }).addTo(map).bindPopup("<b>Drop-Off Section Beta</b><br>Active WMM Segment (Ch:20+100 to 25+500)");
+
+        var routeLine = L.polyline([
+            [23.0225, 72.5714],
+            [23.0300, 72.5750],
+            [23.0338, 72.5850],
+            [23.0512, 72.5930]
+        ], {
+            color: '#ffbc00',
+            weight: 5,
+            opacity: 0.7,
+            dashArray: '10, 8'
+        }).addTo(map);
+
+        var driverMarker = L.marker([23.0225, 72.5714]).addTo(map)
+            .bindPopup("<b>Active Fleet Truck</b><br>Vipul Patel (GJ-01-ZZ-1234)<br>Speed: 42 km/h");
+
+        // Fit map bounds to show route
+        map.fitBounds(routeLine.getBounds(), { padding: [30, 30] });
+
+        // Evaluated by Kotlin code at runtime
+        function updateDriverLocation(lat, lng, info) {
+            var newLatLng = new L.LatLng(lat, lng);
+            driverMarker.setLatLng(newLatLng);
+            if (info) {
+                driverMarker.setPopupContent(info);
+            }
+            map.panTo(newLatLng);
+        }
+
+        function drawCompletedRoute(pointsJsonString) {
+            try {
+                var points = JSON.parse(pointsJsonString);
+                var latlngs = [];
+                for(var i=0; i<points.length; i++) {
+                    latlngs.push([points[i].lat, points[i].lng]);
+                }
+                L.polyline(latlngs, {color: '#4caf50', weight: 4}).addTo(map);
+            } catch(e) {
+                console.error("Error drawing route: " + e);
+            }
+        }
+    </script>
+</body>
+</html>
