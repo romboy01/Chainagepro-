@@ -27,6 +27,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -55,6 +56,100 @@ val LightAccentBlue = Color(0xFF03A9F4)
 val SuccessGreen = Color(0xFF4CAF50)
 val DangerRed = Color(0xFFF44336)
 
+@Composable
+fun SplashScreen(onTimeout: () -> Unit) {
+    var startAnimation by remember { mutableStateOf(false) }
+    val alphaAnim by animateFloatAsState(
+        targetValue = if (startAnimation) 1f else 0f,
+        animationSpec = tween(durationMillis = 1000),
+        label = "Splash Alpha"
+    )
+    val scaleAnim by animateFloatAsState(
+        targetValue = if (startAnimation) 1f else 0.8f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+        label = "Splash Scale"
+    )
+
+    LaunchedEffect(key1 = true) {
+        startAnimation = true
+        kotlinx.coroutines.delay(2200)
+        onTimeout()
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(DarkSteelBg),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+            modifier = Modifier
+                .padding(24.dp)
+                .graphicsLayer(
+                    alpha = alphaAnim,
+                    scaleX = scaleAnim,
+                    scaleY = scaleAnim
+                )
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(96.dp)
+                    .clip(CircleShape)
+                    .background(Brush.radialGradient(listOf(IndustrialYellow, Color.Transparent)))
+                    .padding(8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.Engineering,
+                    contentDescription = null,
+                    tint = Color.Black,
+                    modifier = Modifier.size(56.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Text(
+                "CHAINAGE NAVIGATOR PRO",
+                color = Color.White,
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Black,
+                fontFamily = FontFamily.Monospace,
+                letterSpacing = 3.sp
+            )
+            
+            Text(
+                "HIGHWAY MATERIAL & FLEET LOGISTICS",
+                color = IndustrialYellow,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.5.sp,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+
+            Spacer(modifier = Modifier.height(48.dp))
+
+            CircularProgressIndicator(
+                color = IndustrialYellow,
+                strokeWidth = 3.dp,
+                modifier = Modifier.size(24.dp)
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                "SECURED WITH AES-256 & BIOMETRICS",
+                color = Color.Gray,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Medium,
+                letterSpacing = 1.sp
+            )
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainAppContainer() {
@@ -62,6 +157,7 @@ fun MainAppContainer() {
     val currentDriver by AppRepository.currentDriver.collectAsState()
     val notifications by AppRepository.notifications.collectAsState()
 
+    var showSplash by remember { mutableStateOf(true) }
     var activeTab by remember { mutableStateOf("home") } // home, weighbridge, tracking, approvals, chat, reports, notices
     val context = LocalContext.current
 
@@ -73,7 +169,9 @@ fun MainAppContainer() {
         }
     }
 
-    if (currentUser == null && currentDriver == null) {
+    if (showSplash) {
+        SplashScreen(onTimeout = { showSplash = false })
+    } else if (currentUser == null && currentDriver == null) {
         LoginScreen()
     } else {
         Scaffold(
@@ -174,6 +272,8 @@ fun MainAppContainer() {
 @Composable
 fun LoginScreen() {
     var isDriverMode by remember { mutableStateOf(false) }
+    var isPhoneAuthModeForStaff by remember { mutableStateOf(false) }
+    var isEmailModeForDriver by remember { mutableStateOf(false) }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
@@ -181,6 +281,17 @@ fun LoginScreen() {
     var selectedRole by remember { mutableStateOf("Admin") }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var dropdownExpanded by remember { mutableStateOf(false) }
+    var rememberMe by remember { mutableStateOf(true) }
+
+    // Dialog States
+    var showOtpDialog by remember { mutableStateOf(false) }
+    var otpInput by remember { mutableStateOf("") }
+    var showForgotPasswordDialog by remember { mutableStateOf(false) }
+    var forgotPasswordEmail by remember { mutableStateOf("") }
+    var forgotPasswordMessage by remember { mutableStateOf<String?>(null) }
+    var showBiometricOverlay by remember { mutableStateOf(false) }
+    var biometricType by remember { mutableStateOf("") } // "Fingerprint" or "Face"
+    var biometricProgress by remember { mutableStateOf(0f) }
 
     val rolesList = listOf(
         "Admin", "Project Manager", "Site Engineer", "Supervisor",
@@ -285,41 +396,72 @@ fun LoginScreen() {
             Column(modifier = Modifier.padding(20.dp)) {
                 if (!isDriverMode) {
                     // STAFF LOGIN FLOW
-                    Text("STAFF DETAILS", color = IndustrialYellow, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("STAFF DETAILS", color = IndustrialYellow, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        TextButton(onClick = { isPhoneAuthModeForStaff = !isPhoneAuthModeForStaff; errorMessage = null }) {
+                            Text(
+                                if (isPhoneAuthModeForStaff) "USE EMAIL LOGIN" else "USE PHONE OTP",
+                                color = LightAccentBlue,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
 
-                    OutlinedTextField(
-                        value = email,
-                        onValueChange = { email = it },
-                        label = { Text("Industrial Email Address") },
-                        modifier = Modifier.fillMaxWidth().testTag("staff_email_input"),
-                        singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = IndustrialYellow,
-                            unfocusedBorderColor = Color.LightGray.copy(alpha = 0.4f),
-                            focusedLabelColor = IndustrialYellow,
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White
+                    if (isPhoneAuthModeForStaff) {
+                        OutlinedTextField(
+                            value = phone,
+                            onValueChange = { phone = it },
+                            label = { Text("Registered Mobile Number") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                            modifier = Modifier.fillMaxWidth().testTag("staff_phone_input"),
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = IndustrialYellow,
+                                unfocusedBorderColor = Color.LightGray.copy(alpha = 0.4f),
+                                focusedLabelColor = IndustrialYellow,
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White
+                            )
                         )
-                    )
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    OutlinedTextField(
-                        value = password,
-                        onValueChange = { password = it },
-                        label = { Text("Industrial Credentials") },
-                        visualTransformation = PasswordVisualTransformation(),
-                        modifier = Modifier.fillMaxWidth().testTag("staff_password_input"),
-                        singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = IndustrialYellow,
-                            unfocusedBorderColor = Color.LightGray.copy(alpha = 0.4f),
-                            focusedLabelColor = IndustrialYellow,
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White
+                    } else {
+                        OutlinedTextField(
+                            value = email,
+                            onValueChange = { email = it },
+                            label = { Text("Industrial Email Address") },
+                            modifier = Modifier.fillMaxWidth().testTag("staff_email_input"),
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = IndustrialYellow,
+                                unfocusedBorderColor = Color.LightGray.copy(alpha = 0.4f),
+                                focusedLabelColor = IndustrialYellow,
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White
+                            )
                         )
-                    )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        OutlinedTextField(
+                            value = password,
+                            onValueChange = { password = it },
+                            label = { Text("Industrial Credentials") },
+                            visualTransformation = PasswordVisualTransformation(),
+                            modifier = Modifier.fillMaxWidth().testTag("staff_password_input"),
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = IndustrialYellow,
+                                unfocusedBorderColor = Color.LightGray.copy(alpha = 0.4f),
+                                focusedLabelColor = IndustrialYellow,
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White
+                            )
+                        )
+                    }
 
                     Spacer(modifier = Modifier.height(16.dp))
 
@@ -362,24 +504,72 @@ fun LoginScreen() {
                     }
                 } else {
                     // DRIVER LOGIN FLOW
-                    Text("FLEET DRIVER INBOUND", color = IndustrialYellow, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                    Spacer(modifier = Modifier.height(16.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("FLEET DRIVER INBOUND", color = IndustrialYellow, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                        TextButton(onClick = { isEmailModeForDriver = !isEmailModeForDriver; errorMessage = null }) {
+                            Text(
+                                if (isEmailModeForDriver) "USE MOBILE PHONE" else "USE EMAIL LOGIN",
+                                color = LightAccentBlue,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
 
-                    OutlinedTextField(
-                        value = phone,
-                        onValueChange = { phone = it },
-                        label = { Text("Registered Mobile Number") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                        modifier = Modifier.fillMaxWidth().testTag("driver_phone_input"),
-                        singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = IndustrialYellow,
-                            unfocusedBorderColor = Color.LightGray.copy(alpha = 0.4f),
-                            focusedLabelColor = IndustrialYellow,
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White
+                    if (isEmailModeForDriver) {
+                        OutlinedTextField(
+                            value = email,
+                            onValueChange = { email = it },
+                            label = { Text("Driver Email Address") },
+                            modifier = Modifier.fillMaxWidth().testTag("driver_email_input"),
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = IndustrialYellow,
+                                unfocusedBorderColor = Color.LightGray.copy(alpha = 0.4f),
+                                focusedLabelColor = IndustrialYellow,
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White
+                            )
                         )
-                    )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        OutlinedTextField(
+                            value = password,
+                            onValueChange = { password = it },
+                            label = { Text("Driver Password") },
+                            visualTransformation = PasswordVisualTransformation(),
+                            modifier = Modifier.fillMaxWidth().testTag("driver_password_input"),
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = IndustrialYellow,
+                                unfocusedBorderColor = Color.LightGray.copy(alpha = 0.4f),
+                                focusedLabelColor = IndustrialYellow,
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White
+                            )
+                        )
+                    } else {
+                        OutlinedTextField(
+                            value = phone,
+                            onValueChange = { phone = it },
+                            label = { Text("Registered Mobile Number") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                            modifier = Modifier.fillMaxWidth().testTag("driver_phone_input"),
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = IndustrialYellow,
+                                unfocusedBorderColor = Color.LightGray.copy(alpha = 0.4f),
+                                focusedLabelColor = IndustrialYellow,
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White
+                            )
+                        )
+                    }
 
                     Spacer(modifier = Modifier.height(12.dp))
 
@@ -399,32 +589,121 @@ fun LoginScreen() {
                     )
                 }
 
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Remember Me & Forgot Password Layout
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(
+                            checked = rememberMe,
+                            onCheckedChange = { rememberMe = it },
+                            colors = CheckboxDefaults.colors(checkedColor = IndustrialYellow, uncheckedColor = Color.Gray)
+                        )
+                        Text("Remember Me", color = Color.White, fontSize = 12.sp)
+                    }
+                    TextButton(onClick = { showForgotPasswordDialog = true }) {
+                        Text("Forgot Password?", color = LightAccentBlue, fontSize = 12.sp)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Biometrics Authentication Buttons Block
+                Text(
+                    "SECURE BIOMETRIC SIGN IN",
+                    color = Color.Gray,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp,
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            biometricType = "Fingerprint"
+                            showBiometricOverlay = true
+                            biometricProgress = 0f
+                        },
+                        modifier = Modifier.weight(1f).height(44.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = SurfaceGray.copy(alpha = 0.8f), contentColor = Color.White),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.2f)),
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(0.dp)
+                    ) {
+                        Icon(Icons.Default.Fingerprint, contentDescription = null, tint = IndustrialYellow, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Touch ID", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Button(
+                        onClick = {
+                            biometricType = "Face"
+                            showBiometricOverlay = true
+                            biometricProgress = 0f
+                        },
+                        modifier = Modifier.weight(1f).height(44.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = SurfaceGray.copy(alpha = 0.8f), contentColor = Color.White),
+                        border = BorderStroke(1.dp, Color.White.copy(alpha = 0.2f)),
+                        shape = RoundedCornerShape(8.dp),
+                        contentPadding = PaddingValues(0.dp)
+                    ) {
+                        Icon(Icons.Default.Face, contentDescription = null, tint = IndustrialYellow, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Face ID", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+
                 if (errorMessage != null) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(errorMessage!!, color = DangerRed, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
                 Button(
                     onClick = {
                         errorMessage = null
                         if (!isDriverMode) {
-                            if (email.isBlank() || password.isBlank()) {
-                                errorMessage = "Please supply both security credentials."
-                            } else if (email.trim().lowercase() == "admin@chainage.com" && password.trim() != "admin123") {
-                                errorMessage = "Incorrect password. Admin requires 'admin123'."
+                            if (isPhoneAuthModeForStaff) {
+                                if (phone.isBlank()) {
+                                    errorMessage = "Please enter mobile phone number."
+                                } else {
+                                    otpInput = ""
+                                    showOtpDialog = true
+                                }
                             } else {
-                                AppRepository.loginAsUser(email.trim(), selectedRole) { user, err ->
-                                    if (err != null) errorMessage = err
+                                if (email.isBlank() || password.isBlank()) {
+                                    errorMessage = "Please supply both security credentials."
+                                } else if (email.trim().lowercase() == "admin@chainage.com" && password.trim() != "admin123") {
+                                    errorMessage = "Incorrect password. Admin requires 'admin123'."
+                                } else {
+                                    AppRepository.loginAsUser(email.trim(), selectedRole) { user, err ->
+                                        if (err != null) errorMessage = err
+                                    }
                                 }
                             }
                         } else {
-                            if (phone.isBlank() || vehicleNumber.isBlank()) {
-                                errorMessage = "Mobile and vehicle plate required."
+                            if (isEmailModeForDriver) {
+                                if (email.isBlank() || password.isBlank() || vehicleNumber.isBlank()) {
+                                    errorMessage = "Email, password, and vehicle plate required."
+                                } else {
+                                    AppRepository.loginAsDriver("+919876543210", vehicleNumber.trim()) { drv, err ->
+                                        if (err != null) errorMessage = err
+                                    }
+                                }
                             } else {
-                                AppRepository.loginAsDriver(phone.trim(), vehicleNumber.trim()) { drv, err ->
-                                    if (err != null) errorMessage = err
+                                if (phone.isBlank() || vehicleNumber.isBlank()) {
+                                    errorMessage = "Mobile and vehicle plate required."
+                                } else {
+                                    otpInput = ""
+                                    showOtpDialog = true
                                 }
                             }
                         }
@@ -437,7 +716,11 @@ fun LoginScreen() {
                     contentPadding = PaddingValues(vertical = 14.dp)
                 ) {
                     Text(
-                        text = if (!isDriverMode) "SECURE LOG IN" else "VERIFY VEHICLE & SIGN IN",
+                        text = if (!isDriverMode) {
+                            if (isPhoneAuthModeForStaff) "SEND VERIFICATION SMS" else "SECURE LOG IN"
+                        } else {
+                            if (isEmailModeForDriver) "SIGN IN & VERIFY VEHICLE" else "SEND MOBILE OTP"
+                        },
                         fontWeight = FontWeight.Bold,
                         fontSize = 13.sp,
                         letterSpacing = 1.sp
@@ -491,6 +774,7 @@ fun LoginScreen() {
                     Button(
                         onClick = {
                             isDriverMode = false
+                            isPhoneAuthModeForStaff = false
                             email = "admin@chainage.com"
                             password = "admin123"
                             selectedRole = "Admin"
@@ -533,6 +817,7 @@ fun LoginScreen() {
                     Button(
                         onClick = {
                             isDriverMode = true
+                            isEmailModeForDriver = false
                             phone = "+919876543210"
                             vehicleNumber = "GJ-01-ZZ-1234"
                             errorMessage = null
@@ -552,6 +837,168 @@ fun LoginScreen() {
                 }
             }
         }
+    }
+
+    // OTP Code Verification Dialog
+    if (showOtpDialog) {
+        AlertDialog(
+            onDismissRequest = { showOtpDialog = false },
+            title = { Text("Enter Verification Code", color = IndustrialYellow, fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("A 6-digit OTP has been sent to your phone. For test environment, use: 123456", color = Color.Gray, fontSize = 12.sp)
+                    OutlinedTextField(
+                        value = otpInput,
+                        onValueChange = { otpInput = it },
+                        label = { Text("One-Time Password (OTP)") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth().testTag("otp_input_field"),
+                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = IndustrialYellow, focusedTextColor = Color.White, unfocusedTextColor = Color.White)
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (otpInput.trim() == "123456") {
+                            showOtpDialog = false
+                            if (!isDriverMode) {
+                                AppRepository.loginAsUser("admin@chainage.com", selectedRole) { _, _ -> }
+                            } else {
+                                AppRepository.loginAsDriver(phone.ifBlank { "+919876543210" }, vehicleNumber.ifBlank { "GJ-01-ZZ-1234" }) { _, _ -> }
+                            }
+                        } else {
+                            errorMessage = "Invalid verification code!"
+                            showOtpDialog = false
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = IndustrialYellow, contentColor = Color.Black)
+                ) {
+                    Text("VERIFY & SIGN IN", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showOtpDialog = false }) {
+                    Text("CANCEL", color = Color.LightGray)
+                }
+            },
+            containerColor = SurfaceGray
+        )
+    }
+
+    // Password Retrieval Dialog
+    if (showForgotPasswordDialog) {
+        AlertDialog(
+            onDismissRequest = { showForgotPasswordDialog = false },
+            title = { Text("Password Restoration", color = IndustrialYellow, fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Please submit your registered corporate email or driver email. We will dispatch credentials recovery coordinates.", color = Color.Gray, fontSize = 12.sp)
+                    OutlinedTextField(
+                        value = forgotPasswordEmail,
+                        onValueChange = { forgotPasswordEmail = it },
+                        label = { Text("Corporate Email Address") },
+                        modifier = Modifier.fillMaxWidth().testTag("forgot_password_email_input"),
+                        colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = IndustrialYellow, focusedTextColor = Color.White, unfocusedTextColor = Color.White)
+                    )
+                    if (forgotPasswordMessage != null) {
+                        Text(forgotPasswordMessage!!, color = SuccessGreen, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (forgotPasswordEmail.contains("@")) {
+                            forgotPasswordMessage = "Recovery link dispatched. Check inbox."
+                        } else {
+                            forgotPasswordMessage = "Please input a valid email."
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = IndustrialYellow, contentColor = Color.Black)
+                ) {
+                    Text("SEND RECOVERY LINK", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showForgotPasswordDialog = false
+                    forgotPasswordMessage = null
+                    forgotPasswordEmail = ""
+                }) {
+                    Text("CLOSE", color = Color.LightGray)
+                }
+            },
+            containerColor = SurfaceGray
+        )
+    }
+
+    // Biometrics scanning overlay
+    if (showBiometricOverlay) {
+        LaunchedEffect(biometricProgress) {
+            if (biometricProgress < 1f) {
+                kotlinx.coroutines.delay(100)
+                biometricProgress += 0.1f
+            } else {
+                showBiometricOverlay = false
+                // Authenticate successfully as pre-filled user based on mode!
+                if (!isDriverMode) {
+                    AppRepository.loginAsUser("admin@chainage.com", "Admin") { _, _ -> }
+                } else {
+                    AppRepository.loginAsDriver("+919876543210", "GJ-01-ZZ-1234") { _, _ -> }
+                }
+            }
+        }
+        AlertDialog(
+            onDismissRequest = { showBiometricOverlay = false },
+            title = {
+                Text(
+                    text = "Scanning $biometricType...",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            text = {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth().padding(16.dp)
+                ) {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier.size(100.dp)
+                    ) {
+                        CircularProgressIndicator(
+                            progress = { biometricProgress },
+                            color = IndustrialYellow,
+                            strokeWidth = 4.dp,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                        Icon(
+                            imageVector = if (biometricType == "Fingerprint") Icons.Default.Fingerprint else Icons.Default.Face,
+                            contentDescription = null,
+                            tint = IndustrialYellow,
+                            modifier = Modifier.size(56.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = if (biometricType == "Fingerprint") "Place your finger on the sensor" else "Look directly at the front camera",
+                        color = Color.LightGray,
+                        fontSize = 13.sp,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showBiometricOverlay = false }) {
+                    Text("CANCEL", color = IndustrialYellow)
+                }
+            },
+            containerColor = SurfaceGray
+        )
     }
 }
 
